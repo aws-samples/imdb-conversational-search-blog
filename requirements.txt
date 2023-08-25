@@ -1,0 +1,16 @@
+streamlit~=1.22.0
+langchain
+pyyaml~=6.0
+huggingface_hub
+numpy~=1.24.3
+requests~=2.30.0
+pandas~=2.0.1
+streamlit-chat
+streamlit-extras
+boto3==1.26.90
+requests_aws4auth
+opensearch-py
+transformers
+sentence-transformers
+sagemaker
+ai21[SM]

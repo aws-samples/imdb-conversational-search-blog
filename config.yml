@@ -1,0 +1,36 @@
+corpus:
+  path: ../data/14A/
+
+aos:
+ aos_host: https://vpc-llm-imdb-search-wdv7w5ydpuuzhekveyxmnhsnw4.us-east-1.es.amazonaws.com
+ aos_user: root
+ aos_pass: MyOpenSearch01@
+ aos_index: 'docbot+{model}+{bucket}'
+
+
+emb_configs:
+    huggingface-bloom:
+        type: huggingface
+        region_name: us-east-1
+        endpoint_name: jumpstart-example-huggingface-textembed-2023-04-19-22-23-22-262
+    bedrock-large:
+        type: bedrock
+        region_name: us-east-1
+        endpoint_url: https://amazo-loadb-10wvy7j77n07w-1803419470.us-east-1.elb.amazonaws.com/
+        model_name: AMAZON.bedrock-large-01
+
+llm_configs:
+    huggingface-T5:
+        type: huggingface
+        region_name: us-east-1
+        endpoint_name: jumpstart-example-huggingface-text2text-2023-05-03-23-08-29-102
+    bedrock-large:
+        type: bedrock
+        region_name: us-east-1
+        endpoint_url: https://amazo-loadb-10wvy7j77n07w-1803419470.us-east-1.elb.amazonaws.com/
+        model_name: AMAZON.bedrock-large-01
+    ai21_instruct:
+        type: jumbo-instruct
+        region_name: us-east-1
+        endpoint_name: j2-jumbo-instruct
+
