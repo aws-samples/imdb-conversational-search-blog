@@ -6,9 +6,10 @@ import yaml
 
 import sys
 import base64
+
 sys.path.append("..")
 
-from src.prompt import QA_PROMPT, CHAT_PROMPT
+from src.prompt import CHAT_PROMPT
 from src.search import initialize_ops
 import src.langchain_qa_chat as langchain_qa_chat
 import src.endpoint as endpoint
@@ -17,12 +18,9 @@ import streamlit as st
 from streamlit_chat import message
 from streamlit_extras.colored_header import colored_header
 
-
-with open("config.yml", "r") as file:
+with open("../config.yml", "r") as file:
     config = yaml.safe_load(file)
 
-# task
-_TASK_RE = False  # Set to true only if relation extraction is being performed
 st.set_page_config(layout="wide")
 
 
@@ -37,12 +35,9 @@ def list_llm_models():
     Available models.
     """
     return [
-        "Jurassic-Jumbo-Instruct",
-        "Text2Text",
-        "FLAN-T5-XXL",
-        "Bedrock"
+        "Bedrock",
+        "Jurassic-Jumbo-Instruct"
     ]
-    # return ['Bedrock','FLAN-T5-XXL']
 
 
 @st.cache_data
@@ -82,6 +77,7 @@ def list_questions():
         "What are the movies starring Tom Cruise?",
         "What are the movies directed by James Cameron and rating greater than 5.5?",
         "What are the movies starring Kate Winslet and starring Leonardo DiCaprio?",
+        "What movies are trending today?",
         "Ask your question",
     ]
 
@@ -95,24 +91,19 @@ def create_qa_chain(model, os_task_type, verbose=False):
         os_task_type(str): check if it wants a chat functionality
         verbose(boolean): whether to have the model show its full output
     Returns:
-        langchain QA chain
+        Jurassic Jumbo/Bedrock: llm model used for search and chat
+        langchain.chains.question_answering : QA chain for chat using LLM
+        OpenSearch: initialized opensearch instance
+        SentenceTransformer: sentence transformer embedding model
     """
-    if model == "Bedrock": 
+    if model == "Bedrock":
         llm = endpoint.amazon_bedrock_llm(verbose=verbose)
-        # embedding_model = endpoint.amazon_bedrock_embeddings()
+    elif model == "Jurassic-Jumbo-Instruct":
+        llm = endpoint.sagemaker_endpoint_ai21(config["llm"]["ai21_instruct"])
     else:
-        if model == "FLAN-T5-XXL":
-            llm = endpoint.sagemaker_endpoint(config["llm"]["t5_endpoint"])
-        elif model == "Text2Text":
-            llm = endpoint.text2text_llm()
-        elif model == "Jurassic-Jumbo-Instruct":
-            # llm = endpoint.sagemaker_endpoint_ai21(config["llm"]["ai21_instruct"])
-            llm = endpoint.sagemaker_endpoint_ai21('j2-jumbo-instruct')
-        else:
-            assert False
+        assert False
     embedding_model = endpoint.launch_encoder()
     print("Make QA chain for", model)
-    # search_chain = langchain_qa_chat.chain_qa(llm, verbose=verbose, prompt=QA_PROMPT)
     chat_chain = None
     if "Chat" in os_task_type:
         chat_chain = langchain_qa_chat.chain_chat(
@@ -127,10 +118,20 @@ def create_qa_chain(model, os_task_type, verbose=False):
 def get_text():
     """
     Function for taking user provided prompt as input
+    Returns:
+        str: text input
     """
     input_text = st.text_input("You: ", "", key="input")
     return input_text
 
+# def submit():
+#     st.session_state.past.append(st.session_state.input)
+#     st.session_state.input = ""
+
+def on_btn_click():
+    del st.session_state.past[:]
+    del st.session_state.generated[:]
+    st.session_state.input = ""
 
 def main():
     check_env()
@@ -147,7 +148,7 @@ def main():
     query = col_query[1].selectbox("Select question", [""] + list_questions())
     if "Ask" in query:
         query = st.columns(3)[1].text_input(
-            "Your Question: ", placeholder="Ask me anything ...", key="input"
+            "Your Question: ", placeholder="Ask me anything ...", key="input_qn"
         )
     if not query:
         return
@@ -162,7 +163,6 @@ def main():
             search_llm, chat_chain, ops, embedding_model = create_qa_chain(
                 model, os_task_type, verbose=True
             )
-            
 
             response = langchain_qa_chat.search_and_answer(
                 store,
@@ -186,21 +186,23 @@ def main():
                 # continue
                 raise e
 
+    # Setup search interface
     if "Search" in os_task_type:
         if len(answer) > 0:
             cols = st.columns(10)
-            for i, (title, poster, ttid) in enumerate(answer[0:10]):
-                # print(ttid)
-
-                imdb_url = f"https://www.imdb.com/title/{ttid}/"
+            for i, (title, poster, ttid, trailer_url) in enumerate(answer[0:10]):
+                if "trend" in query and trailer_url != "No link available":
+                    url = trailer_url
+                else:
+                    url = f"https://www.imdb.com/title/{ttid}/"
                 # print(imdb_url)
                 try:
-                    image_html = get_img_with_href(poster, imdb_url)
+                    image_html = get_img_with_href(poster, url)
                     # print(image_html)
                     cols[i % 10].markdown(image_html, unsafe_allow_html=True)
                 except requests.exceptions.MissingSchema:
                     cols[i % 10].markdown("")
-                cols[i % 10].markdown(f"[{title}]({imdb_url})")
+                cols[i % 10].markdown(f"[{title}]({url})")
                 if i % 10 == 0 and i > 1:
                     cols = st.columns(10)
         else:
@@ -208,6 +210,7 @@ def main():
     elif os_task_type == "QnA":
         st.markdown(answer)
 
+    # Setup chat interface
     if "Chat" in os_task_type:
         if "generated" not in st.session_state:
             st.session_state["generated"] = ["Ask any question about the movies above!"]
@@ -240,5 +243,8 @@ def main():
                     )
                     message(st.session_state["generated"][i], key=str(i))
 
+                st.button("Clear message", on_click=on_btn_click)
+
 
 main()
+

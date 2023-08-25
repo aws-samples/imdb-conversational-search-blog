@@ -5,7 +5,6 @@ import boto3
 from requests_aws4auth import AWS4Auth
 from opensearchpy import OpenSearch, RequestsHttpConnection
 
-import ai21
 from src.prompt import get_instruction
 
 
@@ -270,6 +269,7 @@ def extract_json(x):
             break
     return x[i : len(x) - j]
 
+
 def get_exact_match(llm, question):
     """
     Get result from opensearch based on the input question
@@ -298,6 +298,7 @@ def get_exact_match(llm, question):
     results = ops.search(index="imdb_small_posters", body=query)
     return results
 
+
 def search_movie(query, ops):
     """
     Get the movie names from opensearch results
@@ -307,8 +308,12 @@ def search_movie(query, ops):
     Returns:
         list: list of movie names
     """
-    results = ops.search(index="imdb_small_posters", body={"query":{"bool":{"must":[{"terms":{"title.keyword":[query]}}]}}})
-    return results['hits']['hits'][0]['_id'] if results else None
+    results = ops.search(
+        index="imdb_small_posters",
+        body={"query": {"bool": {"must": [{"terms": {"title.keyword": [query]}}]}}},
+    )
+    return results["hits"]["hits"][0]["_id"] if results else None
+
 
 def get_movie_emb(ttid):
     """
@@ -333,16 +338,23 @@ def get_similar_movies(query, ops, topk=10):
         list: top responses from opensearch
     """
     movie_id = search_movie(query, ops)
-    if movie_id: 
+    if movie_id:
         movie_emb = get_movie_emb(movie_id)
         response = get_relevant_plots(movie_emb, ops)
-        response = [hit["_source"] for hit in response["hits"]["hits"] if hit["_source"]['titleId'] != movie_id]
-        top_response = sorted(response, key=lambda d: float(d['rating']), reverse=True) 
-        top_response = [{'_source': resp, '_id': resp['titleId']} for resp in top_response]
+        response = [
+            hit["_source"]
+            for hit in response["hits"]["hits"]
+            if hit["_source"]["titleId"] != movie_id
+        ]
+        top_response = sorted(response, key=lambda d: float(d["rating"]), reverse=True)
+        top_response = [
+            {"_source": resp, "_id": resp["titleId"]} for resp in top_response
+        ]
         return top_response[:topk]
 
     else:
         return None
+
 
 def submit_results(llm, query, ops, embedding_model):
     """
@@ -355,24 +367,40 @@ def submit_results(llm, query, ops, embedding_model):
     Returns:
         list(dict): opensearch output of movies based on user qyery
     """
-    exact_match_candidates = ['shot', 'location', 'actor', 'star', 'plot', 'story', 'rating', 'direct', 'produce']
-    similar_candidates = ['movies similar', 'movies like']
+    exact_match_candidates = [
+        "shot",
+        "location",
+        "actor",
+        "star",
+        "plot",
+        "story",
+        "rating",
+        "direct",
+        "produce",
+    ]
+    similar_candidates = ["movies similar", "movies like"]
     exact_match, similarity_match = False, False
-    for word in similar_candidates: 
-        if word in query: similarity_match=True
-    for word in exact_match_candidates: 
-        if word in query: exact_match=True
-    
+    for word in similar_candidates:
+        if word in query:
+            similarity_match = True
+    for word in exact_match_candidates:
+        if word in query:
+            exact_match = True
+
     if similarity_match:
-        response = get_similar_movies(query.split('to')[-1].strip(), ops)
-    
+        print("SIMILARITY")
+        response = get_similar_movies(query.split("to")[-1].strip(), ops)
+
     elif exact_match:
+        print("EXACT MATCH")
         response = get_exact_match(llm, query)
     else:
+        print("SEMANTIC MATCH")
         response = get_semantic_match(query, ops, embedding_model)
-    
+    print(response)
+
     return response
-    
+
 
 def ask_questions_using_prompt(llm, prompt_template):
     """
@@ -386,6 +414,7 @@ def ask_questions_using_prompt(llm, prompt_template):
     """
     text = llm(prompt_template)
     return text
+
 
 def get_embedding(model, text):
     """
