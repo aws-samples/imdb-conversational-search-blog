@@ -6,7 +6,7 @@ Dataset used: MovieLens + IMDb Mojo Dataset
 
 VectorDB: OpenSearch with 100K records
 
-LLM: Anthropic Claude from Amazon Bedrock, Jurassic Jumbo Instruct, Text2Text, Flan T5 XXL
+LLM: Anthropic Claude from Amazon Bedrock, Jurassic Jumbo Instruct
 
 LLM Framework: LangChain
 
@@ -53,9 +53,3 @@ In terminal:
 Divya Bhargavi, dbharga@amazon.com
 Gaurav Rele, grele@amazon.com
 Suren Gunturu, gunsuren@amazon.com
-
-
-## ToDo
-1. Add demo to demos.aiml.aws.dev
-2. Add personalization in chat to offer movie recommendation.
-3. Test models that support longer context to increase chat context range.
