@@ -12,7 +12,7 @@ import sys
 sys.path.append("../src/")
 from src.search import submit_results
 from src.endpoint import amazon_bedrock_embeddings
-from src.movie_utils import describe_movie, get_trending_content
+from src.movie_utils import describe_movie
 
 with open("../config.yml", "r") as file:
     config = yaml.safe_load(file)
@@ -140,23 +140,11 @@ def search_and_answer(store, llm, query, ops, embedding_model, task=None, k=10):
         )
 
     if "Search" in task:
-        if "trend" in query:
-            response = get_trending_content(config["TMDB_API_TOKEN"])
-            short_response = [
-                (
-                    h["_source"]["title"],
-                    h["_source"]["poster_url"],
-                    h["_id"],
-                    h["trailer"],
-                )
-                for h in response
-            ]
-        else:
-            response = submit_results(llm, query, ops, embedding_model)
-            response = [hit for hit in response["hits"]["hits"]]
-            short_response = [
-                (h["_source"]["title"], h["_source"]["poster_url"], h["_id"], None)
-                for h in response
+        response = submit_results(llm, query, ops, embedding_model)
+        response = [hit for hit in response["hits"]["hits"]]
+        short_response = [
+            (h["_source"]["title"], h["_source"]["poster_url"], h["_id"], None)
+            for h in response
             ]
 
         if "Chat" in task:

@@ -25,11 +25,6 @@ The UI provides a set of default questions for the search use case as shown belo
 These default as well as user inputted search questions can be grouped as either: 
 - Exact match: searching for movies based on location, actor, plot, rating, directors, etc..
 - Semantic match: searching for movies that are similar to others 
-- Trending: searching for movides that are trending now (Disclaimer: these look at tmdb instead of imdb)
-To get the trending movies functionality to work, follow the below steps: 
-1. Create a file `tmdb.txt`
-2. Go the following site: https://developer.themoviedb.org/reference/intro/getting-started, sign up, and obtain an API key
-3. Enter the api key in `tmdb.txt`. This file should only contain the api key and nothing else. 
 
 Currently, the chat bot supports 5 questions at a time to not break context length
 

@@ -77,7 +77,6 @@ def list_questions():
         "What are the movies starring Tom Cruise?",
         "What are the movies directed by James Cameron and rating greater than 5.5?",
         "What are the movies starring Kate Winslet and starring Leonardo DiCaprio?",
-        "What movies are trending today?",
         "Ask your question",
     ]
 
@@ -238,6 +237,7 @@ def main():
 
             if st.session_state["generated"]:
                 for i in range(len(st.session_state["generated"])):
+                    if i==0: continue # Don't print default container msg
                     message(
                         st.session_state["past"][i], is_user=True, key=str(i) + "_user"
                     )
