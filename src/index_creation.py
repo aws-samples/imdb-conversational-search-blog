@@ -1,5 +1,5 @@
 """
-This script helps create an opensearch index. Use the command: 
+This script helps create an opensearch index. Use the command:
 
 python index_creation.py --host [opensearch host id] --region [region name] --imdb_file [s3 path to parquet file] --index_name [name of index]
 """
@@ -7,7 +7,6 @@ import numpy as np
 import json
 import pandas as pd
 import argparse
-
 
 import boto3
 from requests_aws4auth import AWS4Auth
@@ -243,17 +242,91 @@ def ingest_data_into_ops_text(df, ops, ops_index, post_method):
 def load_data_into_os(args):
     """
     Load all the data into opensearch clusters including the KNN and Text index
+    Args:
+        args(ArgumentParser): user inputted or defaulted arguments
+    Returns:
+        dict: response from the ops_text input function
+        boolean: response from the ops_knn input function
     """
     ops = initialize_ops(args.host, args.region)
     df_meta = pd.read_parquet(args.imdb_file)
 
     df_meta["year"] = df_meta["year"].apply(lambda x: int(x) if ~np.isnan(x) else x)
     df_meta = df_meta.fillna("null")
-
+    print("creating exact match index.......")
     response = ingest_data_into_ops_text(
         df_meta, ops, ops_index=args.index_name, post_method=post_request
     )
-    return response
+    print("creating knn/semantic match index.......")
+    knn_response = ingest_data_into_ops_knn(ops, args)
+    return response, knn_response
+
+
+def ingest_data_into_ops_knn(ops, args):
+    """
+    Load all the data into opensearch clusters using a KNN index
+    Args:
+        ops(OpenSearch): initialized opensearch index
+        args(ArgumentParser): user inputted or defaulted arguments
+    Returns:
+        boolean: whether KNN index was created
+    """
+    movies = pd.read_parquet(args.embedding_parquet)
+
+    knn_index = {
+        "settings": {
+            "index.knn": True,
+            "index.knn.space_type": "cosinesimil",
+            "analysis": {
+                "analyzer": {"default": {"type": "standard", "stopwords": "_english_"}}
+            },
+        },
+        "mappings": {
+            "properties": {
+                "emb": {"type": "knn_vector", "dimension": 768, "store": True},
+                "directors": {"type": "text", "store": True},
+                "producers": {"type": "text", "store": True},
+                "stars": {"type": "text", "store": True},
+                "rating": {"type": "text", "store": True},
+                "location": {"type": "text", "store": True},
+                "genres": {"type": "text", "store": True},
+                "year": {"type": "text", "store": True},
+                "plotLong": {"type": "text", "store": True},
+                "title": {"type": "text", "store": True},
+                "poster_url": {"type": "text", "store": True},
+                "titleId": {"type": "text", "store": True},
+                "keyword": {"type": "text", "store": True},
+            }
+        },
+    }
+    try:
+        ops.indices.create(index=args.knn_index_name, body=knn_index, ignore=400)
+        for row in movies.itertuples():
+            ops.index(
+                index=args.knn_index_name,
+                body={
+                    "emb": row.plot_keyword_emb,
+                    "titleId": row.titleId,
+                    "title": row.title,
+                    "poster_url": row.poster_url,
+                    "directors": row.directors,
+                    "producers": row.producers,
+                    "stars": row.stars,
+                    "rating": row.rating,
+                    "location": row.location,
+                    "genres": row.genres,
+                    "year": row.year,
+                    "plotLong": row.plotLong,
+                    "keyword": row.all_keywords,
+                },
+            )
+        print("knn index created")
+        res = ops.search(index=args.knn_index_name, body={"query": {"match_all": {}}})
+        print("Records found: %d." % res["hits"]["total"]["value"])
+        return True
+    except Exception as err:
+        print(err)
+        return False
 
 
 def parse_args():
@@ -274,11 +347,23 @@ def parse_args():
     parser.add_argument(
         "--imdb_file",
         type=str,
-        default="s3://mlsl-imdb-data/imdb_ml_10k.parquet",
+        default="s3://mlsl-imdb-data/imdb_ml_10k_posters.parquet",
         help="imdb metadata file",
     )
     parser.add_argument(
-        "--index_name", type=str, default="imdb_small", help="imdb metadata file"
+        "--embedding_parquet",
+        type=str,
+        default="s3://mlsl-imdb-data/plot_keyword_embeddings.parquet",
+        help="imdb metadata file",
+    )
+    parser.add_argument(
+        "--index_name",
+        type=str,
+        default="imdb_small_posters",
+        help="imdb metadata file",
+    )
+    parser.add_argument(
+        "--knn_index_name", type=str, default="imdb_plot_knn", help="imdb metadata file"
     )
 
     args = parser.parse_args()

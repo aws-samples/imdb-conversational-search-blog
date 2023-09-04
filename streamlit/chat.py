@@ -36,7 +36,7 @@ def list_llm_models():
     """
     return [
         "Bedrock",
-        "Jurassic-Jumbo-Instruct"
+        "Jurassic-Jumbo-Instruct" 
     ]
 
 
@@ -242,9 +242,8 @@ def main():
                         st.session_state["past"][i], is_user=True, key=str(i) + "_user"
                     )
                     message(st.session_state["generated"][i], key=str(i))
-
+                    
                 st.button("Clear message", on_click=on_btn_click)
 
 
 main()
-

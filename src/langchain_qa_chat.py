@@ -14,11 +14,8 @@ from src.search import submit_results
 from src.endpoint import amazon_bedrock_embeddings
 from src.movie_utils import describe_movie, get_trending_content
 
-with open("config.yml", "r") as file:
+with open("../config.yml", "r") as file:
     config = yaml.safe_load(file)
-
-with open("../tmdb.txt", "r") as file:
-    api_key = file.read().strip()
 
 
 def validate_environment():
@@ -54,14 +51,14 @@ def amazon_opensearch_docsearch(aos_config, docs, embeddings):
 
 def create_vector_store(docs, aos_config):
     """
-        Create open search vector store
-        Args:
-            aos_config(dict): configurations for host and index
-            docs(list): list of docs to search
-        Return
-            langchain.vectorstores.opensearch_vector_search.OpenSearchVectorSearch:
-                opensearch vector search output
-        """
+    Create open search vector store
+    Args:
+        aos_config(dict): configurations for host and index
+        docs(list): list of docs to search
+    Return
+        langchain.vectorstores.opensearch_vector_search.OpenSearchVectorSearch:
+            opensearch vector search output
+    """
     embeddings = amazon_bedrock_embeddings()
 
     return amazon_opensearch_docsearch(
@@ -77,7 +74,7 @@ def chain_qa(llm, prompt=None, verbose=False):
         prompt(Langchain.prompt): input question and context
         verbose(boolean): whether to print out everything or not
     Return:
-        Langchain QA Chain
+        langchain.chains.question_answering: QA chain for llm
     """
     return load_qa_chain(llm, chain_type="stuff", verbose=verbose, prompt=prompt)
 
@@ -90,7 +87,7 @@ def chain_chat(llm, prompt=None, verbose=False):
         prompt(Langchain.prompt): input question and context
         verbose(boolean): whether to print out everything or not
     Return:
-        Langchain QA Chain
+        langchain.chains.question_answering: QA chain for llm
     """
     memory = ConversationBufferMemory(
         memory_key="chat_history", input_key="human_input"
@@ -144,9 +141,14 @@ def search_and_answer(store, llm, query, ops, embedding_model, task=None, k=10):
 
     if "Search" in task:
         if "trend" in query:
-            response = get_trending_content(api_key)
+            response = get_trending_content(config["TMDB_API_TOKEN"])
             short_response = [
-                (h["_source"]["title"], h["_source"]["poster_url"], h["_id"], h['trailer'])
+                (
+                    h["_source"]["title"],
+                    h["_source"]["poster_url"],
+                    h["_id"],
+                    h["trailer"],
+                )
                 for h in response
             ]
         else:

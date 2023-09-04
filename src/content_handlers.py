@@ -6,6 +6,9 @@ from langchain.llms.sagemaker_endpoint import LLMContentHandler
 class SageMakerContentHandler(LLMContentHandler):
     """
     SageMaker handler for a T5-XXL endpoint
+    Args:
+        LLMContentHandler(langchain.llms.sagemaker_endpoint): default content
+            handler for LLMs
     """
 
     content_type = "application/json"
@@ -23,6 +26,9 @@ class SageMakerContentHandler(LLMContentHandler):
 class AI21SageMakerContentHandler(LLMContentHandler):
     """
     SageMaker handler for a J2 Jumbo Instruct endpoint
+    Args:
+        LLMContentHandler(langchain.llms.sagemaker_endpoint): default content
+            handler for LLMs
     """
 
     content_type = "application/json"
